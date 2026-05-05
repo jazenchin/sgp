@@ -19,6 +19,7 @@ function getArg(name: string, fallback: number): number {
 async function main() {
   const limit = getArg("limit", 10);
   await mkdir("data/parsed", { recursive: true });
+  await mkdir("data/raw", { recursive: true });
   const html = await fetch(BASE_URL).then((r) => r.text());
   await writeFile("data/raw/wespai-stock115.html", html, "utf8");
 
