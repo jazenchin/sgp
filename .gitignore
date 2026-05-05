@@ -1,0 +1,4 @@
+node_modules/
+data/raw/files/
+data/raw/text/
+tmp/

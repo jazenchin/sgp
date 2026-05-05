@@ -1,0 +1,24 @@
+{
+  "name": "stock-meeting-index",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crawl": "tsx src/crawl-wespai.ts",
+    "build": "tsx src/build-static.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.0",
+    "minisearch": "^7.1.2",
+    "pdf-parse": "^1.1.1",
+    "playwright": "^1.53.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "tsx": "^4.20.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  }
+}
