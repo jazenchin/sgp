@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { MeetingRecordSchema, type MeetingRecord } from "./schema.js";
-import { downloadNoticeFile } from "./download-files.js";
+import { downloadNoticeByUrl, downloadNoticeFile } from "./download-files.js";
 import { parsePdfFile } from "./parse-pdf.js";
 import { selectors } from "./selectors.js";
 
@@ -25,15 +25,27 @@ async function main() {
 
   const $ = cheerio.load(html);
   const rows = $(selectors.tableRows).toArray().slice(0, limit);
+  const candidates = rows.map((row) => {
+    const cells = $(row).find("td").toArray().map((td) => $(td).text().trim());
+    const rowLinks = $(row)
+      .find("a")
+      .toArray()
+      .map((a) => $(a).attr("href"))
+      .filter((href): href is string => Boolean(href))
+      .map((href) => new URL(href, BASE_URL).toString());
+    const detailLink = $(row).find(selectors.detailLinkInCodeCell).attr("href");
+    const detailUrl = detailLink ? new URL(detailLink, BASE_URL).toString() : undefined;
+    const noticeUrl = rowLinks.find((link) => link.includes("doc.twse.com.tw"));
+    return { cells, detailUrl, noticeUrl };
+  });
   const records: MeetingRecord[] = [];
 
-  for (const row of rows) {
+  for (const item of candidates) {
     await delay(1000);
-    const cells = $(row).find("td").toArray().map((td) => $(td).text().trim());
-    const link = $(row).find(selectors.detailLinkInCodeCell).attr("href");
+    const cells = item.cells;
     const stockCode = cells[0] ?? "";
     const companyName = cells[1] ?? "";
-    const detailUrl = link ? new URL(link, BASE_URL).toString() : undefined;
+    const detailUrl = item.detailUrl;
 
     const base: MeetingRecord = {
       year: 115,
@@ -57,16 +69,21 @@ async function main() {
     };
 
     try {
-      if (detailUrl) {
+      if (item.noticeUrl) {
+        const { noticeUrl, localPath, parseResult } = await downloadNoticeByUrl(stockCode, item.noticeUrl);
+        base.noticeFileUrl = noticeUrl;
+        base.noticeFileLocalPath = localPath;
+        if (parseResult) Object.assign(base, parseResult);
+      } else if (detailUrl) {
         const { noticeUrl, localPath, parseResult } = await downloadNoticeFile(stockCode, detailUrl);
         base.noticeFileUrl = noticeUrl;
         base.noticeFileLocalPath = localPath;
         if (parseResult) Object.assign(base, parseResult);
       }
-      base.status = "ok";
-      base.needsReview = false;
+      base.status = base.noticeFileUrl ? "ok" : "partial";
+      base.needsReview = !base.noticeFileUrl || base.needsReview;
     } catch (error) {
-      base.status = "partial";
+      base.status = "failed";
       base.error = error instanceof Error ? error.message : String(error);
       if (base.noticeFileLocalPath?.endsWith(".pdf")) {
         const parsed = await parsePdfFile(base.noticeFileLocalPath);
