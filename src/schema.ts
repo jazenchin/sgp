@@ -28,7 +28,8 @@ export const MeetingRecordSchema = z.object({
   status: z.enum(["ok", "partial", "failed"]),
   error: z.string().optional(),
   rawTextHash: z.string(),
-  fetchedAt: z.string()
+  fetchedAt: z.string(),
+  llmExtraction: z.unknown().optional()
 });
 
 export const MeetingRecordsSchema = z.array(MeetingRecordSchema);
